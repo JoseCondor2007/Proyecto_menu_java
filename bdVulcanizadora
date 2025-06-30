@@ -1,0 +1,300 @@
+-- Creación de la base de datos unificada
+CREATE DATABASE IF NOT EXISTS dbVulcanizadora
+DEFAULT CHARACTER SET utf8mb4
+DEFAULT COLLATE utf8mb4_general_ci;
+
+-- Seleccionar la base de datos para trabajar en ella
+USE dbVulcanizadora;
+
+-- -----------------------------------------------------
+-- Creación de las tablas
+-- -----------------------------------------------------
+
+-- Tabla Cliente: Unificada y mejorada
+-- Combinamos las columnas relevantes de ambas versiones de Cliente.
+CREATE TABLE Cliente (
+    id_cliente INTEGER PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255),
+    celular VARCHAR(9), -- Renombrado de numeroTelefono a celular para consistencia
+    correo_electronico VARCHAR(255), -- Renombrado de correo a correo_electronico para consistencia
+    tipo_de_documento VARCHAR(50), -- Mantener tipo_de_documento
+    numero_de_documento VARCHAR(50) UNIQUE NOT NULL, -- Mantener numero_de_documento y UNIQUE NOT NULL
+    fecha_nacimiento DATE, -- Mantener fecha_nacimiento
+    sexo VARCHAR(20), -- Añadido de la segunda base de datos
+    estado BOOLEAN DEFAULT TRUE, -- Mantener estado
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Mantener fechaRegistro de la segunda base de datos, renombrado a fecha_registro
+);
+
+-- Tabla Vehiculo: Similar a la versión de Josesito, ya es completa
+CREATE TABLE Vehiculo (
+    id_vehiculo INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INTEGER,
+    marca VARCHAR(50),
+    tipo VARCHAR(50),
+    placa VARCHAR(20) UNIQUE -- Placa única del vehículo
+);
+
+-- Tabla Servicio: Unificada y mejorada
+-- Combinamos las columnas de ambas versiones, priorizando la de dbVulcanizadoraJosesito por ser más completa inicialmente.
+CREATE TABLE Servicio (
+    id_servicio INTEGER PRIMARY KEY AUTO_INCREMENT,
+    tipo_servicio VARCHAR(50) NOT NULL, -- Renombrado de tipoServicio a tipo_servicio para consistencia
+    descripcion TEXT(100), -- Mantener descripcion y su longitud
+    comentario TEXT, -- Añadido de la segunda base de datos
+    urgencia VARCHAR(20), -- Añadido de la segunda base de datos
+    estado_vehiculo BOOLEAN, -- Mantener de Josesito, asumiendo su uso
+    fecha DATE, -- Mantener la fecha de Josesito para metadata
+    price NUMERIC(10, 2) NOT NULL, -- Renombrado a price y NOT NULL para consistencia
+    activo BOOLEAN NOT NULL DEFAULT TRUE -- Añadido de la segunda base de datos para estado lógico
+);
+
+-- Tabla Producto: Unificada y mejorada
+-- Combinamos las columnas relevantes, la versión de Josesito ya era bastante completa.
+CREATE TABLE Producto (
+    id_producto INTEGER PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(60) NOT NULL,
+    tipo VARCHAR(50),
+    marca VARCHAR(50),
+    precio DECIMAL(10, 2),
+    stock INTEGER DEFAULT 0,
+    hay_stock BOOLEAN DEFAULT FALSE,
+    fecha_registro DATE -- Usamos DATE en lugar de TIMESTAMP para ser consistentes con los datos de Josesito
+);
+
+-- Tabla Orden_de_Servicio: No necesita cambios, ya es completa
+CREATE TABLE Orden_de_Servicio (
+    id_orden INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INTEGER,
+    id_vehiculo INTEGER,
+    id_servicio INTEGER,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado CHAR(1) DEFAULT 'P'
+);
+
+-- Tabla Venta: No necesita cambios, ya es completa
+CREATE TABLE Venta (
+    id_venta INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INTEGER,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10, 2)
+);
+
+-- Tabla Detalle_de_venta: No necesita cambios, ya es completa
+CREATE TABLE Detalle_de_venta (
+    id_detalle_venta INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id_venta INTEGER,
+    id_producto INTEGER,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario DECIMAL(10, 2) NOT NULL
+);
+
+-- -----------------------------------------------------
+-- Definición de las relaciones (claves foráneas)
+-- -----------------------------------------------------
+
+-- Relación Vehiculo - Cliente
+ALTER TABLE Vehiculo
+    ADD CONSTRAINT FK_Vehiculo_Cliente FOREIGN KEY (id_cliente)
+    REFERENCES Cliente (id_cliente)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Orden_de_Servicio - Cliente
+ALTER TABLE Orden_de_Servicio
+    ADD CONSTRAINT FK_OrdenServicio_Cliente FOREIGN KEY (id_cliente)
+    REFERENCES Cliente (id_cliente)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Orden_de_Servicio - Vehiculo
+ALTER TABLE Orden_de_Servicio
+    ADD CONSTRAINT FK_OrdenServicio_Vehiculo FOREIGN KEY (id_vehiculo)
+    REFERENCES Vehiculo (id_vehiculo)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Orden_de_Servicio - Servicio
+ALTER TABLE Orden_de_Servicio
+    ADD CONSTRAINT FK_OrdenServicio_Servicio FOREIGN KEY (id_servicio)
+    REFERENCES Servicio (id_servicio)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Venta - Cliente
+ALTER TABLE Venta
+    ADD CONSTRAINT FK_Venta_Cliente FOREIGN KEY (id_cliente)
+    REFERENCES Cliente (id_cliente)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Detalle_de_venta - Venta
+ALTER TABLE Detalle_de_venta
+    ADD CONSTRAINT FK_DetalleVenta_Venta FOREIGN KEY (id_venta)
+    REFERENCES Venta (id_venta)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- Relación Detalle_de_venta - Producto
+ALTER TABLE Detalle_de_venta
+    ADD CONSTRAINT FK_DetalleVenta_Producto FOREIGN KEY (id_producto)
+    REFERENCES Producto (id_producto)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- -----------------------------------------------------
+-- Inserción de datos de ejemplo (combinados)
+-- -----------------------------------------------------
+
+-- Datos de Clientes combinados (8 de Josesito + 1 de la segunda = 9 únicos)
+-- Asegúrate de que los id_cliente sean consistentes si vas a usar estos datos en otras tablas
+INSERT INTO Cliente (nombre, apellido, tipo_de_documento, numero_de_documento, correo_electronico, celular, fecha_nacimiento, direccion, sexo, estado)
+VALUES
+('Ricardo', 'Gómez', 'DNI', '87654321', 'ricardo.gomez@email.com', '912345678', '1988-07-20', 'Quilmaná', 'Masculino', TRUE),
+('Ana', 'Pérez', 'DNI', '12345678', 'ana.perez@email.com', '987654321', '1995-03-15', 'Imperial', 'Femenino', TRUE),
+('Carlos', 'Pérez', 'DNI', '55554444', 'carlos.perez@email.com', '96663333', '2002-11-01', 'Quilmaná', 'Masculino', TRUE),
+('Elena', 'Vargas', 'CE', '11223344', 'elena.vargas@email.com', '94445555', '1985-12-28', 'Lima', 'Femenino', TRUE),
+('Javier', 'Soto', 'DNI', '22334455', 'javier.soto@email.com', '93332222', '1991-06-05', 'Roldan', 'Masculino', TRUE),
+('Mariana', 'Rojas', 'PAS', '66778899', 'mariana.rojas@email.com', '97778888', '1998-09-22', 'Lima', 'Femenino', TRUE),
+('Luis', 'Castro', 'DNI', '99001122', 'luis.castro@email.com', '92221111', '1982-04-10', 'La Huerta', 'Masculino', TRUE),
+('Sofía', 'Díaz', 'CE', '33445566', 'sofia.diaz@email.com', '91110000', '2000-01-30', 'Quilmaná', 'Femenino', TRUE),
+('Carlos', 'López', 'DNI', '78901234B', 'carlos.lopez@email.com', '999888777', '1985-12-20', 'Avenida Principal 456, Lima', 'Masculino', TRUE);
+
+-- Datos de Vehículos (9 registros de Josesito)
+-- Nota: Asegúrate de que los id_cliente referencien los IDs generados en la tabla Cliente unificada.
+-- Si los IDs se autoincrementan desde 1, estos valores funcionarán.
+INSERT INTO Vehiculo (id_cliente, marca, tipo, placa)
+VALUES
+(1, 'Toyota', 'Sedan', 'ABC-123'),
+(2, 'Nissan', 'SUV', 'DEF-456'),
+(1, 'Ford', 'Pickup', 'GHI-789'),
+(3, 'Mazda', 'Hatchback', 'JKL-012'),
+(4, 'BMW', 'Sedan', 'MNO-345'),
+(5, 'Chevrolet', 'Camioneta', 'PQR-678'),
+(6, 'Hyundai', 'Sedan', 'STU-901'),
+(7, 'Kia', 'SUV', 'VWX-234'),
+(8, 'Audi', 'Deportivo', 'YZA-567');
+
+-- Datos de Servicios combinados (8 de Josesito)
+INSERT INTO Servicio (tipo_servicio, descripcion, price, fecha, estado_vehiculo, comentario, urgencia, activo)
+VALUES
+('Cambio de llanta', 'Reemplazo de una llanta dañada', 50.00, '2025-05-10', TRUE, 'Servicio estándar de cambio', 'Baja', TRUE),
+('Alineación y balanceo', 'Ajuste de la dirección y equilibrio de las ruedas', 80.00, '2025-05-10', TRUE, 'Requiere equipo especializado', 'Media', TRUE),
+('Revisión de frenos', 'Inspección y ajuste del sistema de frenos', 60.00, '2025-05-09', TRUE, 'Revisión de pastillas y discos', 'Alta', TRUE),
+('Cambio de aceite', 'Reemplazo del aceite del motor y filtro', 40.00, '2025-05-09', FALSE, 'Uso de aceite sintético', 'Baja', TRUE),
+('Rotación de neumáticos', 'Cambio de posición de las llantas', 30.00, '2025-05-11', TRUE, 'Para desgaste uniforme', 'Baja', TRUE),
+('Diagnóstico electrónico', 'Revisión de la computadora del vehículo', 75.00, '2025-05-11', FALSE, 'Lectura de códigos de error', 'Media', TRUE),
+('Reparación de suspensión', 'Arreglo de amortiguadores y otros componentes', 120.00, '2025-05-12', TRUE, 'Cambio de amortiguadores y resortes', 'Alta', TRUE),
+('Mantenimiento preventivo', 'Revisión general del vehículo', 90.00, '2025-05-12', TRUE, 'Incluye varios puntos de control', 'Media', TRUE);
+
+-- Datos de Productos combinados (10 de Josesito)
+INSERT INTO Producto (nombre, tipo, marca, precio, stock, hay_stock, fecha_registro)
+VALUES
+('Llanta Rin 15', 'Llanta', 'Michelin', 120.50, 10, TRUE, '2025-01-05'),
+('Llanta Rin 17', 'Llanta', 'Goodyear', 150.75, 5, TRUE, '2025-02-12'),
+('Batería 12V', 'Batería', 'Bosch', 95.00, 8, TRUE, '2025-03-20'),
+('Filtro de aceite', 'Filtro', 'Mann', 12.99, 20, TRUE, '2025-04-01'),
+('Bujías (set de 4)', 'Bujía', 'NGK', 35.50, 15, TRUE, '2025-05-17'),
+('Líquido de frenos', 'Fluido', 'Bosch', 18.75, 12, TRUE, '2025-06-23'),
+('Filtro de aire', 'Filtro', 'Fram', 9.99, 25, TRUE, '2025-07-08'),
+('Amortiguador delantero', 'Suspensión', 'Monroe', 85.20, 7, TRUE, '2025-08-19'),
+('Llanta Rin 16', 'Llanta', 'Pirelli', 140.00, 0, FALSE, '2025-09-27'),
+('Aceite de motor', 'Aceite', 'Castrol', 25.00, 0, FALSE, '2025-10-30');
+
+-- Datos de Órdenes de Servicio (10 registros de Josesito)
+-- Asegúrate de que los id_cliente, id_vehiculo, id_servicio referencien los IDs generados.
+INSERT INTO Orden_de_Servicio (id_cliente, id_vehiculo, id_servicio)
+VALUES
+(1, 1, 1),
+(2, 2, 2),
+(1, 3, 3),
+(3, 4, 1),
+(4, 5, 4),
+(5, 6, 5),
+(6, 7, 6),
+(7, 8, 7),
+(8, 9, 8),
+(2, 2, 4);
+
+-- Datos de Ventas (10 registros de Josesito)
+-- Asegúrate de que los id_cliente referencien los IDs generados.
+INSERT INTO Venta (id_cliente, total)
+VALUES
+(1, 170.50),
+(2, 230.75),
+(1, 100.00),
+(3, 55.00),
+(4, 95.00),
+(5, 30.00),
+(6, 120.00),
+(7, 85.20),
+(8, 250.00),
+(3, 70.00);
+
+-- Datos de Detalle de Venta (13 registros de Josesito)
+-- Asegúrate de que los id_venta e id_producto referencien los IDs generados.
+INSERT INTO Detalle_de_venta (id_venta, id_producto, cantidad, precio_unitario)
+VALUES
+(1, 1, 1, 120.50),
+(1, 4, 2, 15.00),
+(2, 2, 1, 150.75),
+(3, 3, 1, 95.00),
+(4, 5, 4, 35.50),
+(5, 6, 1, 18.75),
+(6, 1, 1, 120.50),
+(6, 7, 2, 9.99),
+(7, 8, 2, 85.20),
+(8, 2, 1, 150.75),
+(8, 3, 1, 95.00),
+(10, 4, 3, 12.99),
+(10, 7, 1, 9.99);
+
+-- Opcional: Actualizar el campo 'hay_stock' en la tabla 'Producto' para reflejar el stock actual
+UPDATE Producto
+SET hay_stock = (stock > 0);
+
+-- Actualizar estados de Órdenes de Servicio según tus indicaciones previas
+UPDATE Orden_de_Servicio SET estado = 'E' WHERE id_orden = 1;
+UPDATE Orden_de_Servicio SET estado = 'C' WHERE id_orden = 2;
+UPDATE Orden_de_Servicio SET estado = 'E' WHERE id_orden = 3;
+UPDATE Orden_de_Servicio SET estado = 'C' WHERE id_orden = 4;
+UPDATE Orden_de_Servicio SET estado = 'X' WHERE id_orden = 5;
+UPDATE Orden_de_Servicio SET estado = 'C' WHERE id_orden = 6;
+UPDATE Orden_de_Servicio SET estado = 'E' WHERE id_orden = 7;
+UPDATE Orden_de_Servicio SET estado = 'C' WHERE id_orden = 8;
+UPDATE Orden_de_Servicio SET estado = 'P' WHERE id_orden = 9;
+UPDATE Orden_de_Servicio SET estado = 'C' WHERE id_orden = 10;
+
+-- -----------------------------------------------------
+-- Consultas para verificar los datos insertados
+-- -----------------------------------------------------
+SELECT * FROM Cliente;
+SELECT * FROM Vehiculo;
+SELECT * FROM Servicio;
+SELECT * FROM Producto;
+SELECT * FROM Orden_de_Servicio;
+SELECT * FROM Venta;
+SELECT * FROM Detalle_de_venta;
+
+-- Consulta con formato de fecha para Producto
+SELECT
+    nombre,
+    tipo,
+    marca,
+    precio,
+    stock,
+    hay_stock,
+    DATE_FORMAT(fecha_registro, '%d-%m-%Y') AS fecha_registro_formateada
+FROM Producto;
+
+-- Mostrar clientes inactivos (aunque todos están activos en los datos insertados)
+SELECT * FROM Cliente WHERE estado = FALSE;
+
+-- Mostrar columnas de la tabla Cliente
+SHOW COLUMNS FROM Cliente;
+
+-- Consulta para verificar las órdenes de servicio con sus estados
+SELECT id_orden, id_cliente, id_vehiculo, id_servicio, fecha, estado
+FROM Orden_de_Servicio
+ORDER BY id_orden;
